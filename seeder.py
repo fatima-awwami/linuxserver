@@ -3,7 +3,17 @@ from sqlalchemy.orm import sessionmaker
 
 from catalogdb_setup import Base, Category, CategoryItem, User
 
-engine = create_engine('sqlite:///catalog.db',connect_args={'check_same_thread':False},echo=True)
+POSTGRES = {
+    'user': 'catalog',
+    'pw': 'catalogdb',
+    'db': 'catalog',
+    'host': 'localhost',
+    'port': '5432',
+}
+
+engine = create_engine('postgresql://%(user)s:\
+%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES)
+
 # Bind the engine to the metadata of the Base class so that the
 # declaratives can be accessed through a DBSession instance
 Base.metadata.bind = engine

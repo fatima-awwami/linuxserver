@@ -27,23 +27,31 @@ import httplib2
 import json
 import requests
 
-UPLOAD_FOLDER = 'static/image'
+UPLOAD_FOLDER = '/var/www/catalog/catalog/static/image'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 output_size = (200, 200)
 
-app = Flask(__name__, static_url_path='/static')
+app = Flask(__name__, static_url_path='/var/www/catalog/catalog/static')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # client id for google login
+APP_PATH = '/var/www/catalog/catalog/'
 CLIENT_ID = json.loads(
-    open('client_secrets.json', 'r').read())['web']['client_id']
+    open(APP_PATH +'client_secrets.json', 'r').read())['web']['client_id']
 APPLICATION_NAME = "Item Catalog Application"
 
 # connect to the database
-engine = create_engine(
-    'sqlite:///catalog.db',
-    connect_args={'check_same_thread': False}
-    )
+POSTGRES = {
+    'user': 'catalog',
+    'pw': 'catalogdb',
+    'db': 'catalog',
+    'host': 'localhost',
+    'port': '5432',
+}
+
+engine = create_engine('postgresql://%(user)s:\
+%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES)
+
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 
@@ -64,7 +72,7 @@ def showAbout():
 @app.route('/login')
 def showLogin():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
-                    for x in xrange(32))
+                    for x in range(32))
     login_session['state'] = state
     return render_template('login.html', STATE=state, title='Login')
 
@@ -119,7 +127,7 @@ def gconnect():
 
     try:
         # Upgrade the authorization code into a credentials object
-        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow = flow_from_clientsecrets(APP_PATH + 'client_secrets.json', scope='')
         oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(code)
     except FlowExchangeError:
@@ -304,7 +312,7 @@ def showCatalog():
 # generate a random name
 def getRandomName():
     return ''.join(random.choice(string.ascii_uppercase + string.digits)
-                   for x in xrange(12))
+                   for x in range(12))
 
 
 # function to generate a random image name based
@@ -315,6 +323,7 @@ def getFileName(file):
     ext = os.path.splitext(file.filename)[1]
     filename = secure_filename(randomname+ext)
     picture_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print (picture_path)
     # using pillow module, it resize the image to 200 X 200
     # so it doesn't take much space in the file system
     i = Image.open(file)
@@ -327,6 +336,8 @@ def getFileName(file):
 # file system for when the user updates or deletes an item
 def removeFile(filename):
     image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print (image_path)
+
     # check if a file exists on disk
     # if exists, delete it else show an error message
 
@@ -548,6 +559,5 @@ def itemDetails(category_name, item_title):
 
 
 if __name__ == '__main__':
-    app.secret_key = 'super_secret_key'
-    app.debug = True
-    app.run(host='0.0.0.0', port=5000)
+    app.secret_key = 'FX6G1BEBLBO90WP61SS0TMHPDOG9F9FM'
+    app.run()

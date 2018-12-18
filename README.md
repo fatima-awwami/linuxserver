@@ -1,86 +1,284 @@
-Item Catalog App
-======================
+Deploying Python Web App to Linux server
+========================================
+This file explains the steps to setup ubuntu server and run a python application using flask framework with postgresdb.
 
-This is a python application to display items per category. Users can login using a third party login (Google Plus). Authorized users can create, edit and delete items they created.
+Using Amazaon Web Services (lightsail), I have created ubuntu instance (18.04 LTS - Bionic) as below:
+https://lightsail.aws.amazon.com/ls/webapp/create/instance?region=us-east-1
+click create instance:
+Platoform: Linux/Unix
+Blueprint: OS only + Ubuntu 18.04 LTS
+Instance identity: fsnd-linux
 
-Installation and Required Packages
-----------------------------
-1- Install python
-The program is written in python3.
-You can find the installation file in the python download webpage.
+I have created a static IP and linked it to the instance created.
 
-https://www.python.org/downloads/
+now, from the shell, I logged in to the server using ubuntu user with private key I have downloaded from Amazon as below.
+ssh -i LightsailDefaultKey-us-east-1.pem ubuntu@52.205.222.51 -p 22 
 
-2- Install Flask
-	pip install Flask
+Update all currently installed packages:
+=======================================
+	sudo apt-get update
+	sudo apt-get upgrade
 
-3- Install SQLAlqhemy
-	pip install sqlalchemy
+Configure the local timezone to UTC:
+====================================
+	sudo dpkg-reconfigure tzdata
+select None of the above 
+then select UTC
 
-4- install Pillow package for image handling
-	pip install Pillow
+Crete bionic user:
+==================
+- Create the bionic user
+	sudo adduser bionic
+	sudo ls /etc/sudoers.d
+- To give the user the root privillegs. I created new file under the sudoers.d directory
+	sudo cp /etc/sudoers.d/90-cloud-init-users /etc/sudoers.d/bionic
+- Edit the file and change the user name
+	sudo nano /etc/sudoers.d/bionic
+- Using ssh-keygen, I have generated the bionic.pub file
+	as c/Users/.ssh/bionic
 
-5- install oauth2client for google login
-You might need to install the above package.
-	pip3 install --upgrade oauth2client
+	cd /home/bionic
+	sudo mkdir .ssh
+	cd .ssh
+	sudo touch authorized_keys
+	sudo nano authorized_keys
+I have copied the contents of the pub file gnerated from the ssh-keygen to the authorized_keys file 
+	sudo chmod 700 .ssh
+	sudo chmod 644 authorized_keys
 
-Database:
-----------------------------
-the database used in this code is sqlite database. to insatll the database.
-Please run below in the terminal:
- - python catalogdb_setup.py
- - python seeder.py
+ssh -i bionic bionic@52.205.222.51 -p 2200
+
+Create user grader:
+==================
+Same stpes used to create the bionic user
+
+ssh -i grader grader@52.205.222.51 -p 2200
+
+Prevent Root Login using SSH:
+============================
+sudo nano /etc/ssh/sshd_config
+
+Locate the following line:
+PermitRootLogin yes
+Modify the line as follows:
+PermitRootLogin no
+AllowUsers bionic grader
+
+Lastly restart the ssh service
+sudo service ssh restart
+
+change the port for ssh to 2200
+================================
+
+edit the file sshd_config and locate the line port 20
+sudo nano /etc/ssh/sshd_config
+uncommented the line and change the port from 22 to 2200
+
+Configuring the Uncomplicated Fire Wall (UFW)
+============================================
+
+sudo ufw status
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+sudo ufw allow 2200
+sudo ufw allow 80
+sudo ufw allow 123
+
+sudo ufw enable
+
+sudo ufw status to make sure of all the changes to the firewall took place
+
+From Amazon managment console:
+add below to the ports list
+Custom 2200
+
+Postgres DB:
+============
+to install the dataabse, run the command 
+ sudo apt install postgresql postgresql-contrib
+
+switch to Postgresdb using:
+	sudo -i -u postgres
+type 
+	psql
+Now, create a new database user with least privilleges.
+ 	createuser catalog -D -S -R -e
+ 	alter user catalog with encrypted password 'catalogdb'
+ 	Createdb catalog
+ - Grant privilleges to catalogdb to catalog user
+ 	GRANT ALL PRIVILEGES ON DATABASE catalog TO catalog
+
+ 	login to the catalog:
+ 	psql -U catalog
 
 
-Running the application
-----------------------------
-to run the program, clone the entire project folder then navigate to the folder then run the following command in the terminal.
+Deloying catalog Porject to the server:
+=======================================
+- Create a folder catalog under the /var/www directory
+cd /var/www
+sudo mkdir catalog
 
-Python application.py
+cd catalog
+- create a nother directory under catalog
+	cd catalog
+	sudo mkdir catalog
+- connect to the remote github repository to pull the project files
 
-In the browser navigate to localhost:5000/
-This should bring you to the main page which displays all categories with a link to view the items within.
+Git:
+====
 
-Initially there will be a login button where user can login using google plus.
+- Install git
+	sudo apt -y install git
+- connect to the remote rpository and pull the code
+	git remote origin https://github.com/fatima-awwami/catalog.git 
+	git pull origin master
 
-Unauthenticated users can view the catalog only.
+Apache2 server:
+===============
+- Install the apache server
+	sudo apt-get apache2
+- Starting the server:
+	sudo /etc/init.d/apache2 start
 
-Once logged in, user can naviagte to below:
-1- My account:
-   Displays user info taken from her google account.
-2- Add Item button displays under each category:
-   She can add item to any category
+Virtualenironment:
+=================
+1- Install pyhton
+	sudo apt-get python3
+2- Install virtual environment for Python3
+	sudo apt-get install python3-venv
 
-3- In the item details page:
- delete and edit buttons are active if the user is logged in and she is the creator for that item. The same buttons will be deactivated otherwise.
+3- Create a virtual enviroment. This has the benefit of installing the dependecies for each application in it own env.
+	sudo python3 -m venv Virtenv
 
-
-Image Handling:
------------------------------
-Item details includes adding a picture which is saved in the database and the file system as well. The app generates a random name then it saves it to the item table and the file system. If an image is not provided while creating the item, a default image will be given. If the user updates the image for any item, the old image is automatically deleted from the file system.
-
-Deleting an item deletes its image from the file system after deleting the item as well.
-
-Securing the pages:
-------------------------------
-To protect the items from unauthorized access, the app checks for user login and redirects the user to the login page if not authenticated.
-When the user attempts to delete or edit an item for which she is not authorized to do so, the app checks if the user id matches the user id of the item being maniplulated and if they don't macth the user is redrected back to the itm details page.
+4- activate the environment
+	source Virtenv/bin/activate
+5- install Apache WSGI module for python3
+	sudo python3 -m pip install libapache2-mod-wsgi-py3
 
 
-JSON End points:
------------------------
-1- Entire Catalog
-http://localhost:5000/catalog/JSON
-This will provide a json for the entire catalog, category wise
+Installing Dependencies:
+===========================
+after activating the environment install all the dependecies.
+- sudo python3 -m pip install sqlalchemy
+- sudo python3 -m pip install flask
+- sudo python3 -m pip install psycopg2-binary
+- sudo python3 -m pip install Pillow
+- sudo -H python3 -m pip install  oauth2client
 
-2- Categor Items
-/catalog/<string:category_name>/Category/JSON
-ex:
-/catalog/Soccer/Category/JSON
-This provides a json data for all items in a given category
+After installing all the required programs and pakcages:
 
-3- Specific Item
-/catalog/<string:catgeory_name>/<string:item_name>/item/JSON
-ex:
-/catalog/Soccer/Ball/item/JSON
-This provides a json data for a given item
+- Create a wsgi file under the /var/www/catalog as below
+	cd /var/www/catalog
+	sudo touch flaskapp.wsgi
+	sudo nano flaskapp.wsgi
+- Paste the below code
+	import sys
+	import logging
+	logging.basicConfig(stream=sys.stderr)
+	sys.path.insert(0,"/var/www/catalog/catalog")
+	from application import app as application
+	application.secret_key = 'FX6G1BEBLBO90WP61SS0TMHPDOG9F9FM'
+
+- Create apache config file which will interact with the above file when the app is requested as an http
+	sudo touch /etc/apache2/sites-available/FlaskApp.conf
+	sudo nano /etc/apache2/sites-available/FlaskApp.conf
+
+	<VirtualHost *:80>
+	        ServerName catalog.chickenkiller.com
+	        WSGIScriptAlias / /var/www/catalog/flaskapp.wsgi
+	        WSGIPassAuthorization On
+	        <Directory /var/www/catalog/catalog/>
+	                Order allow,deny
+	                Allow from all
+	        </Directory>
+	        Alias /static /var/www/catalog/catalog/static/
+	        <Directory /var/www/catalog/catalog/static/>
+	                Order allow,deny
+	                Allow from all
+	        </Directory>
+	        ErrorLog ${APACHE_LOG_DIR}/error.log
+	        # e.g. LogLevel debug
+	        LogLevel debug
+	        CustomLog ${APACHE_LOG_DIR}/access.log combined
+	</VirtualHost>
+
+
+	Below changes in the application files were made to run:
+1- changing the database from sqlite to Postgresdb
+effected files:
+	application.py
+	seeder.py
+	catalogdb_setup.py
+
+Code change:
+Only one required change that is the engine creation as below
+
+POSTGRES = {
+    'user': 'catalog',
+    'pw': 'catalogdb',
+    'db': 'catalog',
+    'host': 'localhost',
+    'port': '5432',
+}
+
+
+engine = create_engine('postgresql://%(user)s:\
+%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES)
+
+2- Change the path to static and Client_secret.josn files to be absolute
+
+Efected files:
+	application.py
+
+	UPLOAD_FOLDER = '/var/www/catalog/catalog/static/image'
+	APP_PATH = '/var/www/catalog/catalog/'
+
+3- remove the debug statment:
+Effected files:
+	application.py
+
+    app.debug = True
+4- change the run command as below:
+Effected files:
+	application.py
+
+	app.run(host='0.0.0.0', port=5000)
+	to 
+	app.run()
+5- In order to save or delete from the image folder under the static directory, I change the permission for the entire directory as below:
+	sudo chmod -R 757 /var/www
+
+6- Google Oauth configuration:
+Aside from installing the library to run it, I have made some changes to the Oauth console.
+First:
+I have configured a DNS as a subdomain under chickenkiller.com (catalog.chickenkiller.com) which points to Ubuntu instance static IP: 52.205.222.51
+Website: http://freedns.afraid.org
+The same was used in the Oauth settings:
+Authorized redirect URIs: http://catalog.chickenkiller.com/oauth2callback
+Authorized JavaScript origins: http://catalog.chickenkiller.com
+I have downloaded the new JSON client secret and used the same in the server.
+
+7- Login html template:
+I have changed the new reidrect location to be as below:
+	window.location.href = "http://catalog.chickenkiller.com/"
+
+8- to prevent access to the .git folder:
+I have created .htaccess under the .git directory and  added the below code
+	Order allow,deny
+	Deny from all
+
+
+Steps taken to run the app:
+===========================
+
+I have navigated to the project categry.
+	cd /var/www/catalog/catalog
+- I created the database tables
+	python3 catalogdb_setup.py
+- I inserted the data
+	python3 seeder.py
+- Lastly, I ran the application file to make sure the fie runs error free
+	python3 application.py
+Now, in the browser navigate to:
+http://catalog.chickenkiller.com/

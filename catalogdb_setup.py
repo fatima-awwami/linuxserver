@@ -5,8 +5,17 @@ from sqlalchemy import create_engine
 
 Base = declarative_base()
 
+POSTGRES = {
+    'user': 'catalog',
+    'pw': 'catalogdb',
+    'db': 'catalog',
+    'host': 'localhost',
+    'port': '5432',
+}
+
+
 class User(Base):
-    __tablename__ = 'user'
+    __tablename__ = 'appuser'
     id = Column(Integer, primary_key = True)
     name = Column(String(250), nullable = False)
     email = Column(String(250),nullable = False)
@@ -19,7 +28,7 @@ class Category(Base):
     name = Column(String(250), nullable=False,unique=True)
     status = Column(String(1), nullable=False)
     image = Column(String(250))
-    user_id = Column(Integer,ForeignKey('user.id'))
+    user_id = Column(Integer,ForeignKey('appuser.id'))
     user = relationship(User)
 
     @property
@@ -35,13 +44,13 @@ class CategoryItem(Base):
     __tablename__ = 'category_item'
     title =Column(String(250), nullable = False, unique=True)
     id = Column(Integer, primary_key = True)
-    description = Column(String(250))
+    description = Column(String(500))
     price = Column(Integer,nullable=False)
     status = Column(String(1),nullable = False)
     image = Column(String(250))
     category_id = Column(Integer,ForeignKey('category.id'))
     category = relationship(Category)
-    user_id = Column(Integer,ForeignKey('user.id'))
+    user_id = Column(Integer,ForeignKey('appuser.id'))
     user = relationship(User)
 
     @property
@@ -55,6 +64,7 @@ class CategoryItem(Base):
            'image'        : self.image,
        }
 
-engine = create_engine('sqlite:///catalog.db',connect_args={'check_same_thread':False})
+engine = create_engine('postgresql://%(user)s:\
+%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES)
 
 Base.metadata.create_all(engine)
