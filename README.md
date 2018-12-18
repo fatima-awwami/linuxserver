@@ -47,6 +47,7 @@ I have copied the contents of the pub file gnerated from the ssh-keygen to the a
 	sudo chmod 644 authorized_keys
 
 ssh -i bionic bionic@52.205.222.51 -p 2200
+pass phrase: udacitygrader
 
 Create user grader:
 ==================
@@ -88,10 +89,6 @@ sudo ufw allow 123
 sudo ufw enable
 
 sudo ufw status to make sure of all the changes to the firewall took place
-
-From Amazon managment console:
-add below to the ports list
-Custom 2200
 
 Postgres DB:
 ============
