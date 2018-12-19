@@ -47,13 +47,14 @@ I have copied the contents of the pub file gnerated from the ssh-keygen to the a
 	sudo chmod 644 authorized_keys
 
 ssh -i bionic bionic@52.205.222.51 -p 2200
-pass phrase: udacitygrader
 
 Create user grader:
 ==================
 Same stpes used to create the bionic user
 
 ssh -i grader grader@52.205.222.51 -p 2200
+
+passphrase: udacitygrader
 
 Prevent Root Login using SSH:
 ============================
